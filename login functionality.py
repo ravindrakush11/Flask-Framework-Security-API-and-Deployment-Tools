@@ -5,7 +5,7 @@ from functools import wraps
 
 app = Flask(__name__)
 
-app.config['SECRET_KEY'] = 'this is a token'
+app.config['SECRET_KEY'] = 'Your secret key'
 
 def token_required(f):
   @wraps(f)
