@@ -1,13 +1,36 @@
+import os
 from flask import Flask, render_template, redirect, url_for, request
 from flask_sqlalchemy import SQLAlchemy
+import secrets
 from flask_bcrypt import Bcrypt
 
+# Generate a secure key
+secure_key = secrets.token_urlsafe(32)  # 32 bytes for a reasonably long key
+
+# Generate a random 128-bit (16-byte) salt
+# salt = secrets.token_bytes(16)
+
+salt = secrets.SystemRandom()  #secure random number generator
+
+# Never Print the secure key
+# print("Generated Secure Key:", secure_key,'\n',"Generated Salt:", salt)
+
 app = Flask(__name__)
+app.config['SECRET_KEY'] = os.environ.get("SECRET_KEY", 'secure_key')
+app.config['SECURITY_PASSWORD_SALT'] = os.environ.get("SECURITY_PASSWORD_SALT", 'salt')
+
+# mitigate certain types of cross-site request forgery (CSRF) and cross-site script inclusion (XSSI) attacks
+app.config["REMEMBER_COOKIE_SAMESITE"] = "strict"
+app.config["SESSION_COOKIE_SAMESITE"] = "strict"
+
 app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:1234@localhost/flask_db"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = 'your_secret_key'  # Change this to a random value
 
-db = SQLAlchemy(app)
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_pre_ping": True,
+}
+
+db = SQLAlchemy(app)   
 bcrypt = Bcrypt(app)
 
 class User(db.Model):
@@ -16,6 +39,8 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(60), nullable=False)
     
+
+
 # Creating Tables
 with app.app_context():
     db.create_all()
@@ -57,11 +82,9 @@ def login():
 @app.route('/dashboard')
 def dashboard():
     # Retrieve the username from the session or however you store user information after login
-    username = "username"  # Replace with your logic to get the username
+    username = "username"  
     return render_template('dashboard.html', username=username)
+
 
 if __name__ == "__main__":
     app.run(debug=True, port='5005')
-
-
-
