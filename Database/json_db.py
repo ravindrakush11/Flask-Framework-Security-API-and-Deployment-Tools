@@ -2,18 +2,23 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.dialects.postgresql import JSON
 from sqlalchemy.ext.mutable import MutableDict
-
+from flask_migrate import Migrate
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://postgres:1234@localhost/flask_database"
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 
 class DataItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     application = db.Column(db.String(255), nullable=False)
     industry = db.Column(db.String(255), nullable=False)
     region = db.Column(db.String(255), nullable=False)
-
+    
+    uc_list = db.Column(MutableDict.as_mutable(JSON), nullable = True)
+    sub_uc_list = db.Column(MutableDict.as_mutable(JSON), nullable = True)
+    use_case = db.Column(MutableDict.as_mutable(JSON), nullable = True)   
+    
 class JSON_Model(db.Model):
     id = db.Column(db.String(50), primary_key = True)
     json_data = db.Column(MutableDict.as_mutable(JSON), nullable = True)
@@ -26,22 +31,27 @@ with app.app_context():
 def save_data():
     try:
         data = request.get_json()
-
+        
         application = data.get('application')
         industry = data.get('industry')
         region = data.get('region')
 
         if application and industry and region:
-            new_data_item = DataItem(application=application, industry=industry, region=region)
+            new_data_item = DataItem(application=application, industry=industry, region=region #)
+                                                ,uc_list=data.get('uc_list'),
+                                                sub_uc_list = data.get('sub_uc_list'),
+                                                use_case = data.get('use_case'))
             db.session.add(new_data_item)
-            db.session.commit()
-
+            db.session.commit()       
+            
             return jsonify({"status":200,"message": "Data saved successfully", "data": {"id": new_data_item.id}}), 400
         else:
             return jsonify({"status":200,"error": "Incomplete data provided"}), 400
 
     except Exception as e:
-        return jsonify({"status":200,"error": str(e)}), 500
+        return jsonify({"status":200,"error": str(e)}), 500   
+
+
 
 @app.route('/json_data', methods = ['POST'])
 def save_json_data():
@@ -61,6 +71,8 @@ def save_json_data():
 
     except Exception as e:
         return jsonify({"status":200,"error": str(e)}), 500
+  
+  
   
 # Endpoint to retrieve JSON data by ID
 @app.route('/api/get_json_data/<string:id>', methods=['GET'])
